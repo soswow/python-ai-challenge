@@ -1,5 +1,7 @@
 import pygame
 import sys
+import os
+import os.path
 import subprocess
 
 from utils import Debuggable
@@ -146,7 +148,8 @@ class Engine(Debuggable):
         my_bot.via_standart_io = False
         while 1:
             self.turn += 1
-            print "Turn #%d" % self.turn
+            if self.debug_enabled:
+                print "Turn #%d" % self.turn
             if self.pw.is_game_over():
                 winner = self.pw.winner
                 self.debug("Winner is %d" % winner)
@@ -158,15 +161,17 @@ class Engine(Debuggable):
             while True:
                 line = stdout.readline().replace("\n","")
                 self.debug("> %s" % line)
-                print "> %s" % line
+                if self.debug_enabled:
+                    print "> %s" % line
                 if line.startswith("go"):
                     break
                 enemy_orders.append(map(int, line.split(" ")))
             #self.debug("enemy orders:\n %s" % output)
             my_bot.load_data(repr(self.pw))
             my_bot.do_turn()
-            for order in my_bot.real_orders:
-                print "< %d %d %d" % order
+            if self.debug_enabled:
+                for order in my_bot.real_orders:
+                    print "< %d %d %d" % order
             self.game_state_update(enemy_orders, my_bot.real_orders)
             self.print_play_back()
             if self.turn > self.max_turns:
@@ -186,18 +191,24 @@ def main():
     print "Lets game begin!"
     mapp, playback_file, timeout, max_turns, bot_cmd = sys.argv[1:]
     from my_bots import MyBot6
-    engine = Engine(mapp, bot_cmd, MyBot6, timeout, max_turns)
-    winner = engine.run()
-    print "Winner %d" % winner
-    f = open(playback_file, 'w')
-    f.write(engine.playback)
-    f.close()
-#    viz = PlanetWarViz(data)
-#    viz.draw_state()
-#    while True:
-#        viz.input(pygame.event.get())
+    if mapp == "ALL":
+        map_win = {1:[], 2:[]}
+        for mapp in os.listdir('maps'):
+            engine = Engine(os.path.join("maps", mapp), bot_cmd, MyBot6, timeout, max_turns)
+            engine.debug_enabled = False
+            winner = engine.run()
+            print "%s - %s" % (mapp, "Old" if winner == 2 else "New")
+            map_win[winner] = mapp
+        #TODO print map
+    else:
+        engine = Engine(mapp, bot_cmd, MyBot6, timeout, max_turns)
+        winner = engine.run()
+        print "Winner %d" % winner
+        f = open(playback_file, 'w')
+        f.write(engine.playback)
+        f.close()
 
-    
+
 if __name__ == "__main__":
     main()
 #    f = open("maps/map1.txt")

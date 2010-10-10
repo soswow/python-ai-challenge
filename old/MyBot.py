@@ -104,10 +104,6 @@ def DoTurn(pw):
                 can_give -= num
         debugger.debug("%d sent from %d" % (counter, p.PlanetID()))
 
-#       debug("My Next Planet")
-#       debug("End of turn.")
-#       pw.FinishTurn()
-
 
 if __name__ == '__main__':
   try:
