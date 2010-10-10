@@ -144,10 +144,8 @@ class Engine(Debuggable):
         stdin, stdout = process.stdin, process.stdout
         my_bot = self.my_bot_class()
         my_bot.via_standart_io = False
-        cp2 = open("cp2.txt","w")
         while 1:
             self.turn += 1
-            cp2.write("".join(map(str, self.pw.planets)) + "%d---\n" % self.turn)
             print "Turn #%d" % self.turn
             if self.pw.is_game_over():
                 winner = self.pw.winner

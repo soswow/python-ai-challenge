@@ -13,7 +13,13 @@
 // own. Check out the tutorials and articles on the contest website at
 // http://www.ai-contest.com/resources.
 """
-from new_style.utils import Debuggable
+try:
+    from utils import Debuggable
+except:
+    import sys
+    from os import path
+    sys.path.append(path.join(sys.path[0], ".."))
+    from utils import Debuggable
 import math
 
 from PlanetWars import PlanetWars

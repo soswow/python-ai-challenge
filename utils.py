@@ -9,7 +9,7 @@ def getlogger(ext):
     global loggers
     if ext not in loggers:
         logger = logging.getLogger(ext)
-        hdlr = logging.handlers.RotatingFileHandler('myBotLog-%s.txt' % ext,'a',20097152,20)
+        hdlr = logging.handlers.RotatingFileHandler('logs/log-%s.txt' % ext,'a',20097152,20)
         formatter = logging.Formatter('[%(asctime)s]%(levelname)-8s"%(message)s"','%Y-%m-%d %a %H:%M:%S')
 
         hdlr.setFormatter(formatter)
