@@ -187,7 +187,7 @@ class Engine(Debuggable):
 
 def main():
     if len(sys.argv) < 5:
-        raise Exception("Must be 5 arguments")
+        raise Exception("Must be 5 arguments: [mapp name|ALL] [file for java playback] [timeout] [max turns] [enemy script]")
     print "Lets game begin!"
     mapp, playback_file, timeout, max_turns, bot_cmd = sys.argv[1:]
     from my_bots import MyBot6
@@ -197,7 +197,7 @@ def main():
             engine = Engine(os.path.join("maps", mapp), bot_cmd, MyBot6, timeout, max_turns)
             engine.debug_enabled = False
             winner = engine.run()
-            print "%s - %s" % (mapp, "Old" if winner == 2 else "New")
+            print "%s - %s (in %d turns)" % (mapp, "Old" if winner == 2 else "New", engine.turn)
             map_win[winner] = mapp
         #TODO print map
     else:

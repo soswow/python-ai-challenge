@@ -1,0 +1,7 @@
+This is more personal development project, than open source. But it is open and if you want, do with it everything you want.
+
+To start you must make "logs" dir and start pygame_engine.py with params like this:
+ALL . 1000 1000 "python old/MyBot.py"
+To test bot written in my_bots.py (MyBot6 currently) on all maps with my old raw bot in old/MyBot.py
+
+Also you need to have pygame installed.
