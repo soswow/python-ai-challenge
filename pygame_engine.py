@@ -4,9 +4,12 @@ import os
 import os.path
 import subprocess
 
-from utils import Debuggable
+
+from utils import Debuggable, count_time_take, set_default_debug
 
 from planet_wars import PlanetWars, Fleet
+
+MAPS_DIR = "maps"
 
 class PlanetWarViz(Debuggable):
     def __init__(self, data=None):
@@ -140,6 +143,10 @@ class Engine(Debuggable):
         self._advancement()
         self._arrival()
 
+    @property
+    def winner(self):
+        return "Old" if self.pw.winner == 2 else "New" if self.pw.winner == 1 else "Draw"
+
     def run(self):
         self.load_init_state()
         process = subprocess.Popen(self.enemy_cmd, shell=True, stdout=subprocess.PIPE, stdin=subprocess.PIPE)
@@ -152,8 +159,8 @@ class Engine(Debuggable):
                 print "Turn #%d" % self.turn
             if self.pw.is_game_over():
                 winner = self.pw.winner
-                self.debug("Winner is %d" % winner)
-                return winner
+
+                return
             #self.debug("sending %s" % str_state)
             stdin.write(self.pw.repr_for_enemy() + "go\n")
             stdin.flush()
@@ -185,34 +192,51 @@ class Engine(Debuggable):
                   for f in self.pw.fleets]
         self.playback += ",".join(planets + fleets) + ":"
 
-def main():
-    if len(sys.argv) < 5:
-        raise Exception("Must be 5 arguments: [mapp name|ALL] [file for java playback] [timeout] [max turns] [enemy script]")
-    print "Lets game begin!"
-    mapp, playback_file, timeout, max_turns, bot_cmd = sys.argv[1:]
-    from my_bots import MyBot6
-    if mapp == "ALL":
-        map_win = {1:[], 2:[]}
-        for mapp in os.listdir('maps'):
-            engine = Engine(os.path.join("maps", mapp), bot_cmd, MyBot6, timeout, max_turns)
-            engine.debug_enabled = False
-            winner = engine.run()
-            print "%s - %s (in %d turns)" % (mapp, "Old" if winner == 2 else "New", engine.turn)
-            map_win[winner] = mapp
-        #TODO print map
-    else:
-        engine = Engine(mapp, bot_cmd, MyBot6, timeout, max_turns)
-        winner = engine.run()
-        print "Winner %d" % winner
-        f = open(playback_file, 'w')
-        f.write(engine.playback)
-        f.close()
+class Runner(object):
+    def __init__(self, mapp, playback_file, timeout, max_turns, bot_cmd, bot_class):
+        self.mapp = mapp
+        self.playback_file = playback_file
+        self.timeout, self.max_turns = int(timeout), int(max_turns)
+        self.bot_cmd = bot_cmd
+        self.bot_class = bot_class
 
+    @count_time_take
+    def play_map(self, mapp, debug_enabled=True):
+        engine = Engine(os.path.join(MAPS_DIR, mapp), self.bot_cmd, self.bot_class, self.timeout, self.max_turns)
+        engine.debug_enabled = debug_enabled
+        engine.run()
+        engine.debug("Winner is %s" % engine.winner)
+        if debug_enabled:
+            f = open(self.playback_file, 'w')
+            f.write(engine.playback)
+            f.close()
+        return engine.winner, engine.turn
+
+    def run(self):
+        debug_enabled = True
+        maps = [self.mapp]
+        if self.mapp == "ALL":
+            maps = sorted(os.listdir(MAPS_DIR), key=lambda p: int(p[3:-4]))
+            debug_enabled = False
+
+        set_default_debug(debug_enabled)
+
+        for mapp in maps:
+            winner, in_turns, time_take = self.play_map(mapp, debug_enabled)
+            print "%s - %s (%d turns in %s seconds)" % (mapp, winner, in_turns, time_take)
+
+@count_time_take
+def main(bot_class):
+    args = sys.argv
+    assert len(args) > 5
+    #Must be 5 arguments: [mapp name|ALL] [file for java playback] [timeout] [max turns] [enemy script]
+    args.append(bot_class)
+    runner = Runner(*args[1:])
+    runner.run()
 
 if __name__ == "__main__":
-    main()
-#    f = open("maps/map1.txt")
-#    data = "\n".join([line for line in f])
-#    f.close()
-#    main(data)
+    print "Lets game begin!"
+    from my_bots import MyBot6 as bot_class
+    time_take = main(bot_class)
+    print "Game take %d minutes %d seconds" % (time_take / 60, time_take % 60)
   

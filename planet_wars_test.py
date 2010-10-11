@@ -1,5 +1,6 @@
 
 import unittest
+from time import sleep
 
 from planet_wars import PlanetWars, Planet, Fleet, pov
 from pygame_engine import Engine
@@ -103,6 +104,32 @@ class EngineTest(unittest.TestCase):
         self.eng._process_arrival(pl, winner, second)
         self.assertEqual(11, pl.num_ships)
 
+    def test_main(self):
+        self.runner_ok = 0
+        test_self = self
+        class FakeRunner(object):
+            def __init__(self, mapp, playback_file, timeout, max_turns, bot_cmd, bot_class):
+                test_self.assertEqual(1, mapp)
+                test_self.assertEqual(2, playback_file)
+                test_self.assertEqual(3, timeout)
+                test_self.assertEqual(4, max_turns)
+                test_self.assertEqual(5, bot_cmd)
+                test_self.assertEqual(6, bot_class)
+                test_self.runner_ok += 1
+                sleep(2)
+
+            def run(self):
+                test_self.runner_ok += 1
+
+        self.runner_ok = False
+        import pygame_engine
+        pygame_engine.sys.argv = [0,1,2,3,4,5]
+        pygame_engine.Runner = FakeRunner
+        secs = pygame_engine.main(6)
+        self.assertEqual(2, self.runner_ok)
+        self.assertEqual(2, secs)
+
     def test_arrival(self):
         pass
+
 #TODO Write tests for game_state_update parts methods.

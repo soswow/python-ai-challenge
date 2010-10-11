@@ -1,15 +1,20 @@
 import logging
 import logging.handlers
+from datetime import datetime
+from os.path import join as path_join
+from functools import wraps
 
 DEBUG = True
-DEFAULT_SCOPE = 'default'
+DEFAULT_SCOPE = "default"
+DEFAULT_DEBUG_ENABLE_FILE = "is_debug_enabled"
+LOGS_DIR = "logs"
 
 loggers = {}
 def getlogger(ext):
     global loggers
     if ext not in loggers:
         logger = logging.getLogger(ext)
-        hdlr = logging.handlers.RotatingFileHandler('logs/log-%s.txt' % ext,'a',20097152,20)
+        hdlr = logging.handlers.RotatingFileHandler(path_join(LOGS_DIR, 'log-%s.txt' % ext),'a',20097152,20)
         formatter = logging.Formatter('[%(asctime)s]%(levelname)-8s"%(message)s"','%Y-%m-%d %a %H:%M:%S')
 
         hdlr.setFormatter(formatter)
@@ -29,9 +34,20 @@ def debug(msg, ext=None):
         logger = getlogger(ext)
         logger.debug(msg)
 
+def set_default_debug(is_enabled):
+    f = open(path_join(LOGS_DIR, DEFAULT_DEBUG_ENABLE_FILE), 'w')
+    f.write(str(int(is_enabled)))
+    f.close()
+
+def _read_is_debug_enabled():
+    f = open(path_join(LOGS_DIR, DEFAULT_DEBUG_ENABLE_FILE))
+    is_enabled = bool(int(f.read()))
+    f.close()
+    return is_enabled
+
 class Debuggable(object):
     def __init__(self):
-        self.debug_enabled = True
+        self.debug_enabled = _read_is_debug_enabled()
         self.debug_name = "default"
         
     def debug(self, msg, ext=None):
@@ -105,6 +121,20 @@ def main_util(bot_class):
         run(bot_class)
     except KeyboardInterrupt:
         print 'ctrl-c, leaving ...'
+
+def count_time_take(f):
+    @wraps(f)
+    def wrapper(*args, **kwds):
+        time_start = datetime.now()
+        res = f(*args, **kwds)
+        time_take = (datetime.now() - time_start).seconds
+        if res is None:
+            return time_take
+        elif isinstance(res, tuple):
+            return res + (time_take,)
+        else:
+            return res, time_take
+    return wrapper
 
 def run(bot_class):
     map_data = ''
