@@ -55,6 +55,10 @@ class Debuggable(object):
             ext = self.debug_name + ("-" + ext if ext else "")
             debug(msg, ext)
 
+    def print_it(self, msg):
+        if self.debug_enabled:
+            print msg
+
 def fleet_needed(pw, dest):
     debug_force("Fleet_needed for %d (%d)" % (dest.PlanetID(), dest.Owner()))
     all_fleets = pw.MyFleets() + pw.EnemyFleets()

@@ -161,7 +161,7 @@ class PlanetWars(Debuggable):
 
     def is_game_over(self):
         '''check for end of the game'''
-        return not all([self.is_alive(player) for player in range(1,3)])
+        return not all([self.is_alive(player) for player in range(1,3)]) or self.turn > self.max_turns
 
     @property
     def winner(self):

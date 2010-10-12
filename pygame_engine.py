@@ -155,36 +155,27 @@ class Engine(Debuggable):
         my_bot.via_standart_io = False
         while 1:
             self.turn += 1
-            if self.debug_enabled:
-                print "Turn #%d" % self.turn
+            self.print_it("Turn #%d" % self.turn)
             if self.pw.is_game_over():
-                winner = self.pw.winner
-
                 return
-            #self.debug("sending %s" % str_state)
+
             stdin.write(self.pw.repr_for_enemy() + "go\n")
             stdin.flush()
             enemy_orders = []
             while True:
                 line = stdout.readline().replace("\n","")
                 self.debug("> %s" % line)
-                if self.debug_enabled:
-                    print "> %s" % line
+                self.print_it("> %s" % line)
                 if line.startswith("go"):
                     break
                 enemy_orders.append(map(int, line.split(" ")))
             #self.debug("enemy orders:\n %s" % output)
             my_bot.load_data(repr(self.pw))
             my_bot.do_turn()
-            if self.debug_enabled:
-                for order in my_bot.real_orders:
-                    print "< %d %d %d" % order
+            print_it("\n".join(["< %d %d %d" % order for order in my_bot.real_orders]))
             self.game_state_update(enemy_orders, my_bot.real_orders)
             self.print_play_back()
-            if self.turn > self.max_turns:
-                winner = self.pw.winner
-                self.debug("Winner is %d" % winner)
-                return winner
+
 
     def print_play_back(self):
         planets = ["%d.%d" % (p.owner, p.num_ships) for p in self.pw.planets]
