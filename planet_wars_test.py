@@ -3,7 +3,7 @@ import unittest
 from time import sleep
 
 from planet_wars import PlanetWars, Planet, Fleet, pov, EndOfTheGame
-from pygame_engine import Engine
+from engine import Engine
 
 class PlanetTest(unittest.TestCase):
     def setUp(self):
@@ -141,10 +141,10 @@ class EngineTest(unittest.TestCase):
                 test_self.runner_ok += 1
 
         self.runner_ok = False
-        import pygame_engine
-        pygame_engine.sys.argv = [0,1,2,3,4,5]
-        pygame_engine.Runner = FakeRunner
-        secs = pygame_engine.main(6)
+        import engine
+        engine.sys.argv = [0,1,2,3,4,5]
+        engine.Runner = FakeRunner
+        secs = engine.main(6)
         self.assertEqual(2, self.runner_ok)
         self.assertEqual(2, secs)
 
