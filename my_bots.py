@@ -53,7 +53,7 @@ class MyBot6(Bot):
                 continue
             weight = self.get_weight(src, dst)
             planets.append((weight, dst,))
-        planets.sort(key=lambda p: p[0], reverse=True)
+        planets.sort(key=lambda p: p[0])
         return [pl[1] for pl in planets]
 
     def do_turn(self):

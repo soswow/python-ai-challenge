@@ -7,7 +7,7 @@ import subprocess
 
 from utils import Debuggable, count_time_take, set_default_debug
 
-from planet_wars import PlanetWars, Fleet
+from planet_wars import PlanetWars, Fleet, EndOfTheGame
 
 MAPS_DIR = "maps"
 
@@ -66,10 +66,19 @@ class Engine(Debuggable):
         self.max_turns = max_turns
         self.enemy_cmd = enemy_cmd
         self.pw = PlanetWars()
-        self.my_bot_class = my_bot_class
-        self.turn = 0
+        try:
+            self.my_bot = my_bot_class()
+        except:
+            self.my_bot = None
         self.debug_name = "engine"
         self.playback = ""
+
+    @property
+    def turn(self):
+        return self.pw.turn
+
+    def plus_turn(self):
+        self.pw.turn += 1
 
     def load_map_data(self):
         f = open(self.mapp)
@@ -147,41 +156,53 @@ class Engine(Debuggable):
     def winner(self):
         return "Old" if self.pw.winner == 2 else "New" if self.pw.winner == 1 else "Draw"
 
+    def set_enemy_standard_io(self):
+        process = subprocess.Popen(self.enemy_cmd, shell=True, stdout=subprocess.PIPE, stdin=subprocess.PIPE)
+        self.stdin, self.stdout = process.stdin, process.stdout
+
     def run(self):
         self.load_init_state()
-        process = subprocess.Popen(self.enemy_cmd, shell=True, stdout=subprocess.PIPE, stdin=subprocess.PIPE)
-        stdin, stdout = process.stdin, process.stdout
-        my_bot = self.my_bot_class()
-        my_bot.via_standart_io = False
-        while 1:
-            self.turn += 1
-            self.print_it("Turn #%d" % self.turn)
-            if self.pw.is_game_over():
-                return
-
-            stdin.write(self.pw.repr_for_enemy() + "go\n")
-            stdin.flush()
-            enemy_orders = []
+        self.set_enemy_standard_io()
+        self.my_bot.via_standard_io = False
+        try:
             while True:
-                line = stdout.readline().replace("\n","")
-                self.debug("> %s" % line)
-                self.print_it("> %s" % line)
-                if line.startswith("go"):
-                    break
-                enemy_orders.append(map(int, line.split(" ")))
-            #self.debug("enemy orders:\n %s" % output)
-            my_bot.load_data(repr(self.pw))
-            my_bot.do_turn()
-            print_it("\n".join(["< %d %d %d" % order for order in my_bot.real_orders]))
-            self.game_state_update(enemy_orders, my_bot.real_orders)
-            self.print_play_back()
+                self.make_turn()
+        except EndOfTheGame:
+            return
 
+    def communicate_enemy_bot(self):
+        self.stdin.write(self.pw.repr_for_enemy() + "go\n")
+        self.stdin.flush()
+        enemy_orders = []
+        while True:
+            line = self.stdout.readline().replace("\n", "")
+            self.debug("> %s" % line)
+            self.print_it("> %s" % line)
+            if line.startswith("go"):
+                break
+            enemy_orders.append(map(int, line.split(" ")))
+        return enemy_orders
+
+    def communicate_my_bot(self):
+        self.my_bot.load_data(repr(self.pw))
+        self.my_bot.do_turn()
+        self.print_it("\n".join(["< %d %d %d" % order for order in self.my_bot.real_orders]))
+
+    def make_turn(self):
+        self.plus_turn()
+        self.print_it("Turn #%d" % self.turn)
+        self.pw.is_game_over(self.max_turns)
+        enemy_orders = self.communicate_enemy_bot()
+        self.communicate_my_bot()
+        self.game_state_update(enemy_orders, self.my_bot.real_orders)
+        self.print_play_back()
 
     def print_play_back(self):
-        planets = ["%d.%d" % (p.owner, p.num_ships) for p in self.pw.planets]
-        fleets = ["%d.%d.%d.%d.%d.%d" % (f.owner, f.num_ships, f.src, f.dest, f.total_trip_length, f.turns_remaining)
-                  for f in self.pw.fleets]
-        self.playback += ",".join(planets + fleets) + ":"
+        if self.debug_enabled:
+            planets = ["%d.%d" % (p.owner, p.num_ships) for p in self.pw.planets]
+            fleets = ["%d.%d.%d.%d.%d.%d" % (f.owner, f.num_ships, f.src, f.dest, f.total_trip_length, f.turns_remaining)
+                      for f in self.pw.fleets]
+            self.playback += ",".join(planets + fleets) + ":"
 
 class Runner(object):
     def __init__(self, mapp, playback_file, timeout, max_turns, bot_cmd, bot_class):
@@ -218,16 +239,33 @@ class Runner(object):
 
 @count_time_take
 def main(bot_class):
-    args = sys.argv
-    assert len(args) > 5
-    #Must be 5 arguments: [mapp name|ALL] [file for java playback] [timeout] [max turns] [enemy script]
-    args.append(bot_class)
-    runner = Runner(*args[1:])
-    runner.run()
+    try:
+        args = sys.argv
+        assert len(args) > 5
+        #Must be 5 arguments: [mapp name|ALL] [file for java playback] [timeout] [max turns] [enemy script]
+        args.append(bot_class)
+        runner = Runner(*args[1:])
+        runner.run()
+    except KeyboardInterrupt:
+        return
 
 if __name__ == "__main__":
+    try:
+        import psyco
+        print "Psyco is ok"
+        psyco.full()
+    except ImportError:
+        print "No Psyco"
+        pass
+
     print "Lets game begin!"
     from my_bots import MyBot6 as bot_class
     time_take = main(bot_class)
     print "Game take %d minutes %d seconds" % (time_take / 60, time_take % 60)
+#
+#    import cProfile
+#    cProfile.run('main(bot_class)', 'fooprof')
+#    import pstats
+#    p = pstats.Stats('fooprof')
+#    p.sort_stats('time').print_stats(25)
   

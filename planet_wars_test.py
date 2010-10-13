@@ -2,26 +2,45 @@
 import unittest
 from time import sleep
 
-from planet_wars import PlanetWars, Planet, Fleet, pov
+from planet_wars import PlanetWars, Planet, Fleet, pov, EndOfTheGame
 from pygame_engine import Engine
 
 class PlanetTest(unittest.TestCase):
     def setUp(self):
         self.pw = PlanetWars()
 
+    def _game_over_true(self, max_turn):
+        try:
+            self.pw.is_game_over(max_turn)
+            self.fail("Exception expected")
+        except EndOfTheGame:
+            pass
+
+    def _game_over_false(self, max_turn):
+        try:
+            self.pw.is_game_over(max_turn)
+        except EndOfTheGame:
+            self.fail("Exception unexpected")
+
     def test_is_game_over(self):
-        self.assertTrue(self.pw.is_game_over())
+        self.pw.turn = 10
+        self._game_over_true(9)
+
+        self.pw.turn = 1
+
+        self._game_over_true(1)
         self.pw.planets.append(Planet(1,1,10,5,10,10))
-        self.assertTrue(self.pw.is_game_over())
+        self._game_over_true(1)
         self.pw.planets.append(Planet(2,2,10,5,10,10))
-        self.assertFalse(self.pw.is_game_over())
+        self._game_over_false(1)
 
         self.pw.planets = []
-        self.assertTrue(self.pw.is_game_over())
+        self._game_over_true(1)
         self.pw.fleets.append(Fleet(1, 10, 1, 2, 10, 10))
-        self.assertTrue(self.pw.is_game_over())
+        self._game_over_true(1)
         self.pw.fleets.append(Fleet(2, 10, 1, 2, 10, 10))
-        self.assertFalse(self.pw.is_game_over())
+        self._game_over_false(1)
+
 
     def test_pov(self):
         self.assertEqual(1, pov(1,1))

@@ -116,11 +116,6 @@ def print_server_io(map_data):
 
 def main_util(bot_class):
     try:
-        import psyco
-        psyco.full()
-    except ImportError:
-        pass
-    try:
         debug("Let's game begin!!")
         run(bot_class)
     except KeyboardInterrupt:

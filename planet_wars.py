@@ -5,6 +5,7 @@ from utils import Debuggable
 
 from math import ceil, sqrt
 from sys import stdout
+import math
 
 def pov(owner, who):
     if who == 1 or owner == 0:
@@ -36,36 +37,6 @@ class Fleet(object):
                                           self.src, self.dest,
                                           self.total_trip_length, self.turns_remaining)
 
-class Planet(object):
-    def __init__(self, planet_id, owner, num_ships, growth_rate, x, y):
-        self.id = planet_id
-        self.owner = owner
-        self.num_ships = num_ships
-        self.growth_rate = growth_rate
-        self.x = x
-        self.y = y
-
-    def add_ships(self, amount):
-        self.num_ships += amount
-
-    def remove_ships(self, amount):
-        self.num_ships -= amount
-
-    def __repr__(self):
-        return self.__str__()
-
-    def __str__(self):
-        return self.repr_for()
-
-    def repr_for_enemy(self):
-        return self.repr_for(2)
-
-    def repr_for(self, who=1):
-        return "P %f %f %d %d %d\n" % (self.x, self.y, pov(self.owner, who), self.num_ships, self.growth_rate) 
-
-    def __eq__(self, other):
-        return self.id == other.id
-
 class PlanetWars(Debuggable):
     def __init__(self, game_state=None):
         super(PlanetWars, self).__init__()
@@ -75,7 +46,7 @@ class PlanetWars(Debuggable):
         self.real_orders = []
         self.game_state = game_state
         self.debug_name = "planetwars"
-        self.via_standart_io = True
+        self.via_standard_io = True
         if game_state:
             self.parse_game_state()
 
@@ -99,37 +70,25 @@ class PlanetWars(Debuggable):
         return self.fleets[fleet_id]
 
     def _objects_by_owners(self, objects, owners):
-        return filter(lambda p: p.owner in owners, objects)
+        lst = []
+        for obj in objects:
+            if obj.owner in owners:
+                lst.append(obj)
+        return lst
 
     def _planets_by_owners(self, *owners):
         return self._objects_by_owners(self.planets, owners)
 
-    @property
-    def my_planets(self):
-        return self._planets_by_owners(1)
-
-    @property
-    def neutral_planets(self):
-        return self._planets_by_owners(0)
-
-    @property
-    def enemy_planets(self):
-        return self._planets_by_owners(2)
-
-    @property
-    def not_my_planets(self):
-        return self._planets_by_owners(0, 2)
-
     def _fleets_by_owners(self, *owners):
         return self._objects_by_owners(self.fleets, owners)
 
-    @property
-    def my_fleets(self):
-        return self._fleets_by_owners(self, 1)
-
-    @property
-    def enemy_fleets(self):
-        return self._fleets_by_owners(self, 2)
+    def cache_immutable_info(self):
+        self.my_planets = self._planets_by_owners(1)
+        self.neutral_planets = self._planets_by_owners(0)
+        self.enemy_planets = self._planets_by_owners(2)
+        self.not_my_planets = self._planets_by_owners(0, 2)
+        self.my_fleets = self._fleets_by_owners(self, 1)
+        self.enemy_fleets = self._fleets_by_owners(self, 2)
 
     def __repr__(self):
         return "".join([str(pl) for pl in (self.planets + self.fleets)])
@@ -147,7 +106,7 @@ class PlanetWars(Debuggable):
     def issue_order(self, src_id, dest_id, num_ships):
         order = (src_id, dest_id, num_ships)
         self.real_orders.append(order)
-        if self.via_standart_io:
+        if self.via_standard_io:
             self.debug("Order: %d %d %d" % order)
             stdout.write("%d %d %d\n" % order)
             stdout.flush()
@@ -159,9 +118,10 @@ class PlanetWars(Debuggable):
     def is_alive(self, player_id):
         return self.total_ships(player_id) > 0
 
-    def is_game_over(self):
+    def is_game_over(self, max_turns):
         '''check for end of the game'''
-        return not all([self.is_alive(player) for player in range(1,3)]) or self.turn > self.max_turns
+        if not all([self.is_alive(player) for player in range(1,3)]) or self.turn > max_turns:
+            raise EndOfTheGame()
 
     @property
     def winner(self):
@@ -196,7 +156,7 @@ class PlanetWars(Debuggable):
                 continue
             if tokens[0] == "P":
                 if len(tokens) != 6:
-                    return 0
+                    raise BadState("Planet line is wrong")
                 p = Planet(planet_id, # The ID of this planet
                            int(tokens[3]), # Owner
                            int(tokens[4]), # Num ships
@@ -207,7 +167,7 @@ class PlanetWars(Debuggable):
                 self.planets.append(p)
             elif tokens[0] == "F":
                 if len(tokens) != 7:
-                    return 0
+                    raise BadState("Fleet line is wrong")
                 f = Fleet(int(tokens[1]), # Owner
                           int(tokens[2]), # Num ships
                           int(tokens[3]), # Source
@@ -216,8 +176,8 @@ class PlanetWars(Debuggable):
                           int(tokens[6])) # Turns remaining
                 self.fleets.append(f)
             else:
-                return 0
-        return 1
+                raise BadState("Unsupported line came")
+        self.cache_immutable_info()
 
     def finish_turn(self):
         stdout.write("go\n")
@@ -238,6 +198,35 @@ class PlanetWars(Debuggable):
         new_fleet = Fleet(1, ships, src, dest, d, d)
         self.fleets.append(new_fleet)
 
+class Planet(object):
+    def __init__(self, planet_id, owner, num_ships, growth_rate, x, y):
+        self.id = planet_id
+        self.owner = owner
+        self.num_ships = num_ships
+        self.growth_rate = growth_rate
+        self.x = x
+        self.y = y
+
+    def add_ships(self, amount):
+        self.num_ships += amount
+
+    def remove_ships(self, amount):
+        self.num_ships -= amount
+
+    def __repr__(self):
+        return self.__str__()
+
+    def __str__(self):
+        return self.repr_for()
+
+    def repr_for_enemy(self):
+        return self.repr_for(2)
+
+    def repr_for(self, who=1):
+        return "P %f %f %d %d %d\n" % (self.x, self.y, pov(self.owner, who), self.num_ships, self.growth_rate)
+
+    def __eq__(self, other):
+        return self.id == other.id
 
 
 class Bot(PlanetWars):
@@ -298,3 +287,8 @@ class Bot(PlanetWars):
                     can_give -= ships_to_send
             self.debug("From %d in total sent %d ships" % (init_was - src.num_ships, src.id))
 
+class EndOfTheGame(Exception):
+    pass
+
+class BadState(Exception):
+    pass
